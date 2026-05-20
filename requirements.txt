@@ -1,0 +1,23 @@
+# Core data/analysis stack
+numpy>=1.23
+pandas>=1.5
+matplotlib>=3.6
+seaborn>=0.12
+
+# Machine learning
+scikit-learn>=1.2
+lightgbm>=4.0
+optuna>=3.0
+
+# Deep learning / image processing
+torch>=2.0
+torchvision>=0.15
+Pillow>=9.0
+
+# Utilities
+tqdm>=4.64
+
+# Note:
+# If PyTorch installation needs a platform-specific wheel on Windows,
+# install the matching torch/torchvision build from the official PyTorch instructions.
+
