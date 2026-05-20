@@ -13,7 +13,50 @@ import time
 
 warnings.filterwarnings('ignore')
 
-def random_forest(x_train, x_val, x_test, y_train, y_val, y_test, n_trials):
+
+def _build_pruner(pruner=None):
+    if pruner is None:
+        return optuna.pruners.HyperbandPruner(min_resource=20, max_resource=100, reduction_factor=3)
+    if isinstance(pruner, str):
+        key = pruner.strip().lower()
+        if key in {"hyperband", "hyperbandpruner"}:
+            return optuna.pruners.HyperbandPruner(min_resource=20, max_resource=100, reduction_factor=3)
+        if key in {"asha", "successivehalving", "successivehalvingpruner"}:
+            return optuna.pruners.SuccessiveHalvingPruner(min_resource=20, reduction_factor=3)
+        if key in {"median", "medianpruner"}:
+            return optuna.pruners.MedianPruner()
+        if key in {"none", "nopruner", "no"}:
+            return optuna.pruners.NopPruner()
+        raise ValueError(f"Unsupported pruner: {pruner}")
+    return pruner
+
+
+def _build_sampler(sampler=None):
+    if sampler is None:
+        return optuna.samplers.TPESampler(seed=42)
+    if isinstance(sampler, str):
+        key = sampler.strip().lower()
+        if key in {"tpe", "tpesampler"}:
+            return optuna.samplers.TPESampler(seed=42)
+        if key in {"random", "randomsampler"}:
+            return optuna.samplers.RandomSampler(seed=42)
+        if key in {"cmaes", "cmaessampler"}:
+            try:
+                return optuna.samplers.CmaEsSampler(seed=42)
+            except Exception as exc:
+                raise ImportError("CMA-ES sampler requires the optional 'cmaes' package.") from exc
+        raise ValueError(f"Unsupported sampler: {sampler}")
+    return sampler
+
+
+def _create_study(pruner=None, sampler=None):
+    return optuna.create_study(
+        direction="maximize",
+        pruner=_build_pruner(pruner),
+        sampler=_build_sampler(sampler)
+    )
+
+def random_forest(x_train, x_val, x_test, y_train, y_val, y_test, n_trials, pruner=None, sampler=None):
     start = time.time()
 
     def objective(trial):
@@ -34,12 +77,7 @@ def random_forest(x_train, x_val, x_test, y_train, y_val, y_test, n_trials):
 
         return acc
 
-    study = optuna.create_study(direction="maximize",
-                                pruner=optuna.pruners.HyperbandPruner(
-                                min_resource=20,
-                                max_resource=100,
-                                reduction_factor=3),
-                                sampler=optuna.samplers.TPESampler(seed=42))
+    study = _create_study(pruner=pruner, sampler=sampler)
 
     study.optimize(objective, n_trials=n_trials)
 
@@ -73,7 +111,7 @@ def random_forest(x_train, x_val, x_test, y_train, y_val, y_test, n_trials):
 
 
 
-def svc_classifiers(x_train, x_val, x_test, y_train, y_val, y_test, n_trials):
+def svc_classifiers(x_train, x_val, x_test, y_train, y_val, y_test, n_trials, pruner=None, sampler=None):
     start = time.time()
 
     def objective(trial):
@@ -88,12 +126,7 @@ def svc_classifiers(x_train, x_val, x_test, y_train, y_val, y_test, n_trials):
         acc = accuracy_score(y_val, y_pred)
         return acc
 
-    study = optuna.create_study(direction="maximize",
-                                pruner=optuna.pruners.HyperbandPruner(
-                                min_resource=20,
-                                max_resource=100,
-                                reduction_factor=3),
-                                sampler=optuna.samplers.TPESampler(seed=42))
+    study = _create_study(pruner=pruner, sampler=sampler)
 
     study.optimize(objective, n_trials=n_trials)
 
@@ -124,7 +157,7 @@ def svc_classifiers(x_train, x_val, x_test, y_train, y_val, y_test, n_trials):
 
     return metrics
 
-def knn_classifiers(x_train, x_val, x_test, y_train, y_val, y_test, n_trials):
+def knn_classifiers(x_train, x_val, x_test, y_train, y_val, y_test, n_trials, pruner=None, sampler=None):
     start = time.time()
 
     def objective(trial):
@@ -146,12 +179,7 @@ def knn_classifiers(x_train, x_val, x_test, y_train, y_val, y_test, n_trials):
 
         return acc
 
-    study = optuna.create_study(direction="maximize",
-                                pruner=optuna.pruners.HyperbandPruner(
-                                min_resource=20,
-                                max_resource=100,
-                                reduction_factor=3),
-                                sampler=optuna.samplers.TPESampler(seed=42))
+    study = _create_study(pruner=pruner, sampler=sampler)
     study.optimize(objective, n_trials=n_trials)
 
     best_params = study.best_trial.params
@@ -180,7 +208,7 @@ def knn_classifiers(x_train, x_val, x_test, y_train, y_val, y_test, n_trials):
 
     return metrics
 
-def lr_classifiers(x_train, x_val, x_test, y_train, y_val, y_test, n_trials):
+def lr_classifiers(x_train, x_val, x_test, y_train, y_val, y_test, n_trials, pruner=None, sampler=None):
     start = time.time()
 
     def objective(trial):
@@ -201,12 +229,7 @@ def lr_classifiers(x_train, x_val, x_test, y_train, y_val, y_test, n_trials):
         acc = accuracy_score(y_val, y_pred)
         return acc
 
-    study = optuna.create_study(direction="maximize",
-                                pruner=optuna.pruners.HyperbandPruner(
-                                min_resource=20,
-                                max_resource=100,
-                                reduction_factor=3),
-                                sampler=optuna.samplers.TPESampler(seed=42))
+    study = _create_study(pruner=pruner, sampler=sampler)
 
     study.optimize(objective, n_trials=n_trials)
 
@@ -237,7 +260,7 @@ def lr_classifiers(x_train, x_val, x_test, y_train, y_val, y_test, n_trials):
 
     return metrics
 
-def extratree_classifiers(x_train, x_val, x_test, y_train, y_val, y_test, n_trials):
+def extratree_classifiers(x_train, x_val, x_test, y_train, y_val, y_test, n_trials, pruner=None, sampler=None):
     start = time.time()
 
     def objective(trial):
@@ -265,12 +288,7 @@ def extratree_classifiers(x_train, x_val, x_test, y_train, y_val, y_test, n_tria
         acc = accuracy_score(y_val, y_pred)
         return acc
 
-    study = optuna.create_study(direction="maximize",
-                                pruner=optuna.pruners.HyperbandPruner(
-                                min_resource=20,
-                                max_resource=100,
-                                reduction_factor=3),
-                                sampler=optuna.samplers.TPESampler(seed=42))
+    study = _create_study(pruner=pruner, sampler=sampler)
     study.optimize(objective, n_trials=n_trials)
 
     best_params = study.best_trial.params
@@ -300,7 +318,7 @@ def extratree_classifiers(x_train, x_val, x_test, y_train, y_val, y_test, n_tria
 
     return metrics
 
-def lgbm_classifiers(x_train, x_val, x_test, y_train, y_val, y_test, n_trials):
+def lgbm_classifiers(x_train, x_val, x_test, y_train, y_val, y_test, n_trials, pruner=None, sampler=None):
     start = time.time()
 
     def objective(trial):
@@ -328,12 +346,7 @@ def lgbm_classifiers(x_train, x_val, x_test, y_train, y_val, y_test, n_trials):
         acc = accuracy_score(y_val, y_pred)
         return acc
 
-    study = optuna.create_study(direction="maximize",
-                                pruner=optuna.pruners.HyperbandPruner(
-                                min_resource=20,
-                                max_resource=100,
-                                reduction_factor=3),
-                                sampler=optuna.samplers.TPESampler(seed=42))
+    study = _create_study(pruner=pruner, sampler=sampler)
 
     study.optimize(objective, n_trials=n_trials)
 
@@ -370,7 +383,7 @@ def lgbm_classifiers(x_train, x_val, x_test, y_train, y_val, y_test, n_trials):
 
     return metrics
 
-def modeling():
+def modeling(pruner=None, sampler=None):
 
     fea_name = ""
 
@@ -423,17 +436,17 @@ def modeling():
 
     for model_name, n_trials in models.items():
         if model_name == "KNN":
-            metrics = knn_classifiers(x_train.copy(), x_val.copy(), x_test.copy(), y_train.copy(), y_val.copy(), y_test.copy(), n_trials)
+            metrics = knn_classifiers(x_train.copy(), x_val.copy(), x_test.copy(), y_train.copy(), y_val.copy(), y_test.copy(), n_trials, pruner=pruner, sampler=sampler)
         elif model_name == "LR":
-            metrics = lr_classifiers(x_train.copy(), x_val.copy(), x_test.copy(), y_train.copy(), y_val.copy(), y_test.copy(), n_trials)
+            metrics = lr_classifiers(x_train.copy(), x_val.copy(), x_test.copy(), y_train.copy(), y_val.copy(), y_test.copy(), n_trials, pruner=pruner, sampler=sampler)
         elif model_name == "LGBM":
-            metrics = lgbm_classifiers(x_train.copy(), x_val.copy(), x_test.copy(), y_train.copy(), y_val.copy(), y_test.copy(), n_trials)
+            metrics = lgbm_classifiers(x_train.copy(), x_val.copy(), x_test.copy(), y_train.copy(), y_val.copy(), y_test.copy(), n_trials, pruner=pruner, sampler=sampler)
         elif model_name == "EXTree":
-            metrics = extratree_classifiers(x_train.copy(), x_val.copy(), x_test.copy(), y_train.copy(), y_val.copy(), y_test.copy(), n_trials)
+            metrics = extratree_classifiers(x_train.copy(), x_val.copy(), x_test.copy(), y_train.copy(), y_val.copy(), y_test.copy(), n_trials, pruner=pruner, sampler=sampler)
         elif model_name == "RF":
-            metrics = random_forest(x_train.copy(), x_val.copy(), x_test.copy(), y_train.copy(), y_val.copy(), y_test.copy(), n_trials)
+            metrics = random_forest(x_train.copy(), x_val.copy(), x_test.copy(), y_train.copy(), y_val.copy(), y_test.copy(), n_trials, pruner=pruner, sampler=sampler)
         elif model_name == "SVM":
-            metrics = svc_classifiers(x_train.copy(), x_val.copy(), x_test.copy(), y_train.copy(), y_val.copy(), y_test.copy(), n_trials)
+            metrics = svc_classifiers(x_train.copy(), x_val.copy(), x_test.copy(), y_train.copy(), y_val.copy(), y_test.copy(), n_trials, pruner=pruner, sampler=sampler)
         else:
             raise ValueError("Model not found")
 
